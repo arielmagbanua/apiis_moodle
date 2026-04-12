@@ -10,6 +10,8 @@
 import { setGlobalOptions } from "firebase-functions";
 import { onRequest } from "firebase-functions/https";
 import * as logger from "firebase-functions/logger";
+import busboyFactory from "busboy";
+import { parse } from "csv-parse";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -26,7 +28,77 @@ import * as logger from "firebase-functions/logger";
 // this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 2 });
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+export const extractDataFromMoodleQuizResults = onRequest(
+  (request, response) => {
+    // Only allow POST requests for CSV uploads
+    if (request.method !== "POST") {
+      response.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    const busboy = busboyFactory({ headers: request.headers });
+    const results: Record<string, string>[] = [];
+    let fileProcessed = false;
+
+    busboy.on("file", (fieldname, file, info) => {
+      const { filename, mimeType } = info;
+      logger.info(`Processing file: ${filename} (${mimeType})`);
+
+      if (mimeType !== "text/csv" && !filename.endsWith(".csv")) {
+        logger.warn(`Skipping non-CSV file: ${filename}`);
+        file.resume();
+        return;
+      }
+
+      fileProcessed = true;
+      const parser = file.pipe(
+        parse({
+          columns: true, // Uses the first row as header keys
+          skip_empty_lines: true,
+          trim: true,
+        }),
+      );
+
+      parser.on("readable", () => {
+        let record;
+        while ((record = parser.read()) !== null) {
+          results.push(record);
+        }
+      });
+
+      parser.on("error", (err) => {
+        logger.error("Error parsing CSV:", err);
+        response.status(500).send("Error parsing CSV");
+      });
+
+      parser.on("end", () => {
+        logger.info(`Finished parsing ${results.length} records`);
+      });
+    });
+
+    busboy.on("finish", () => {
+      if (!fileProcessed) {
+        response.status(400).send("No CSV file found in request");
+        return;
+      }
+      // Send the resulting JavaScript object back as JSON
+      response.status(200).json({
+        success: true,
+        count: results.length,
+        data: results,
+      });
+    });
+
+    busboy.on("error", (err) => {
+      logger.error("Busboy error:", err);
+      response.status(500).send("Internal Server Error");
+    });
+
+    // Pipe the request into busboy
+    if (request.rawBody) {
+      busboy.end(request.rawBody);
+    } else {
+      request.pipe(busboy);
+    }
+  },
+);

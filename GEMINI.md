@@ -1,52 +1,55 @@
 # GEMINI.md
 
-This file provides instructional context for Gemini CLI interactions within the `apiis_moodle` project.
+This file provides foundational context for AI-assisted development in the `apiis_moodle` project.
 
 ## Project Overview
-`apiis_moodle` is a Firebase-based project for the `apiis-moodle-2487f` project ID. It includes Cloud Firestore and Cloud Functions for backend logic.
+`apiis_moodle` is a Firebase-based backend service designed to process data from Moodle. Its primary function is to handle CSV uploads from Moodle quiz results and convert them into structured JavaScript objects for further processing or storage.
 
 ### Key Technologies
-- **Firebase:** Platform for database and serverless compute.
-- **Cloud Firestore:** NoSQL document database (Region: `australia-southeast1`).
-- **Cloud Functions (v2):** Serverless compute (Runtime: Node.js 24, Region: `australia-southeast1`).
-- **TypeScript:** Language for Cloud Functions.
-- **ESLint:** Code linting with Google standard and TypeScript support.
+- **Firebase:** Platform for serverless infrastructure.
+- **Cloud Functions (v2):** Used for backend logic, specifically HTTP-triggered functions.
+- **TypeScript:** The primary language for backend development.
+- **Node.js (v24):** The runtime environment for Cloud Functions.
+- **Busboy & csv-parse:** Libraries used for handling multipart/form-data and robust CSV parsing.
+- **ESLint:** Enforces the Google JavaScript/TypeScript style guide.
 
 ## Architecture
-The project follows a standard Firebase structure:
-- **`firebase.json`**: Main configuration for Firebase services (Firestore and Functions).
-- **`firestore.rules`**: Security rules for Cloud Firestore.
-- **`firestore.indexes.json`**: Custom indexes for complex Firestore queries.
-- **`functions/`**: Directory for Cloud Functions backend.
-  - **`src/`**: Source code in TypeScript.
-  - **`index.ts`**: Entry point for function definitions.
-  - **`lib/`**: Compiled JavaScript output.
+The project is structured as a standard Firebase project:
+- **Root Directory:** Contains project-wide configuration (`firebase.json`, `.firebaserc`, `.gitignore`).
+- **`functions/`**: The core backend codebase.
+  - **`src/index.ts`**: Main entry point where Cloud Functions are defined.
+  - **`lib/`**: Directory for compiled JavaScript (automatically generated during build).
+  - **`package.json`**: Manages backend dependencies and scripts.
 
-*Note: `firebase.json` contains a `runtime: python313` field for functions, but the project is currently set up as a Node.js/TypeScript project (`functions/package.json`, `tsconfig.json`). Ensure the runtime matches the language when deploying.*
+### Cloud Functions
+- **`extractDataFromMoodleQuizResults`**: An HTTP `onRequest` function (v2) that:
+  - Validates `POST` requests.
+  - Parses `multipart/form-data` using `busboy`.
+  - Converts CSV data into JSON using `csv-parse`.
+  - Configured with `maxInstances: 2` for cost control.
 
 ## Building and Running
-The following commands should be executed within the `functions/` directory:
+Development and deployment should be managed from the `functions/` directory.
 
-| Task | Command |
-| :--- | :--- |
-| **Linting** | `npm run lint` |
-| **Build** | `npm run build` |
-| **Build (Watch)** | `npm run build:watch` |
-| **Emulate Functions**| `npm run serve` |
-| **Deploy Functions** | `npm run deploy` |
-| **View Logs** | `npm run logs` |
+| Task | Command | Description |
+| :--- | :--- | :--- |
+| **Linting** | `npm run lint` | Checks code against style rules. |
+| **Linting (Fix)** | `npm run lint -- --fix` | Automatically fixes style violations. |
+| **Build** | `npm run build` | Compiles TypeScript into JavaScript in the `lib/` folder. |
+| **Emulate** | `npm run serve` | Starts the Firebase Functions emulator locally. |
+| **Deploy** | `npm run deploy` | Deploys functions to the Firebase cloud. |
+| **Logs** | `npm run logs` | Streams logs from the deployed functions. |
 
-To start all Firebase emulators (Firestore, Functions, etc.) from the root:
-- `firebase emulators:start`
+### Global Commands (from root)
+- **Start All Emulators:** `firebase emulators:start`
 
 ## Development Conventions
-- **Naming:** Follow standard TypeScript/JavaScript camelCase.
-- **Style:** Adhere to Google's ESLint style (indent: 2, double quotes).
-- **Functions:** Use Firebase Functions v2 API triggers (`onRequest`, `onCall`, etc.) with `setGlobalOptions` for global configuration.
-- **Linting:** Pre-deploy hooks run `npm run lint` and `npm run build` in `functions/`.
+- **Code Style:** Strictly follows the [Google JavaScript Style Guide](https://google.github.io/styleguide/jsguide.html) via ESLint.
+- **Concurrency:** Uses Firebase Functions v2 for better concurrency and performance management.
+- **Type Safety:** Prioritize TypeScript interfaces and types over `any`.
+- **Pre-deployment:** Firebase is configured to automatically run linting and building before every deployment.
 
-## Key Files
-- `firebase.json`: Core configuration file for Firebase services.
-- `firestore.rules`: Defines access permissions for Firestore data.
-- `functions/src/index.ts`: The primary file for serverless backend code.
-- `.firebaserc`: Stores project aliases (e.g., `apiis-moodle-2487f`).
+## Key Configuration Files
+- `firebase.json`: Defines deployment targets and pre-deployment hooks.
+- `.firebaserc`: Associates the local environment with the `apiis-moodle-2487f` project ID.
+- `functions/tsconfig.json`: Controls the TypeScript compilation process (Target: `es2017`, Module: `NodeNext`).
