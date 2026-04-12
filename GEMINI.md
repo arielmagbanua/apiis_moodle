@@ -7,7 +7,7 @@ This file provides foundational context for AI-assisted development in the `apii
 
 ### Key Technologies
 - **Firebase:** Platform for serverless infrastructure.
-- **Cloud Functions (v2):** Used for backend logic, specifically HTTP-triggered functions.
+- **Cloud Functions (v2):** Used for backend logic, specifically HTTP-triggered functions (Region: `asia-southeast1`).
 - **TypeScript:** The primary language for backend development.
 - **Node.js (v24):** The runtime environment for Cloud Functions.
 - **Busboy & csv-parse:** Libraries used for handling multipart/form-data and robust CSV parsing.
