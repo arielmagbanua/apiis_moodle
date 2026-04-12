@@ -29,6 +29,7 @@ import { parse } from "csv-parse";
 setGlobalOptions({ region: "asia-southeast1", maxInstances: 2 });
 
 export const extractDataFromMoodleQuizResults = onRequest(
+  { cors: true, invoker: "public" },
   (request, response) => {
     // only allow POST requests for CSV uploads
     if (request.method !== "POST") {
