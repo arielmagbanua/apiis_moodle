@@ -30,7 +30,7 @@ setGlobalOptions({ maxInstances: 2 });
 
 export const extractDataFromMoodleQuizResults = onRequest(
   (request, response) => {
-    // Only allow POST requests for CSV uploads
+    // only allow POST requests for CSV uploads
     if (request.method !== "POST") {
       response.status(405).send("Method Not Allowed");
       return;
@@ -41,6 +41,11 @@ export const extractDataFromMoodleQuizResults = onRequest(
     let fileProcessed = false;
 
     busboy.on("file", (fieldname, file, info) => {
+      if (fieldname !== "quiz_results") {
+        response.status(400).send("Invalid field name");
+        return;
+      }
+
       const { filename, mimeType } = info;
       logger.info(`Processing file: ${filename} (${mimeType})`);
 
@@ -53,7 +58,8 @@ export const extractDataFromMoodleQuizResults = onRequest(
       fileProcessed = true;
       const parser = file.pipe(
         parse({
-          columns: true, // Uses the first row as header keys
+          bom: true, // detect and strip the UTF-8 BOM
+          columns: true, // uses the first row as header keys
           skip_empty_lines: true,
           trim: true,
         }),
@@ -68,7 +74,9 @@ export const extractDataFromMoodleQuizResults = onRequest(
 
       parser.on("error", (err) => {
         logger.error("Error parsing CSV:", err);
-        response.status(500).send("Error parsing CSV");
+        if (!response.headersSent) {
+          response.status(500).send("Error parsing CSV");
+        }
       });
 
       parser.on("end", () => {
@@ -77,28 +85,88 @@ export const extractDataFromMoodleQuizResults = onRequest(
     });
 
     busboy.on("finish", () => {
+      if (response.headersSent) {
+        return;
+      }
+
       if (!fileProcessed) {
         response.status(400).send("No CSV file found in request");
         return;
       }
-      // Send the resulting JavaScript object back as JSON
+
+      // pop the last 2 records
+      results.pop();
+      const groupAverage = results.pop();
+
+      // get the first field name that starts with "Grade/"
+      const gradeFieldName = Object.keys(groupAverage || {}).find((key) =>
+        key.startsWith("Grade/"),
+      );
+      const groupAverageValue = groupAverage?.[gradeFieldName || ""];
+
+      // get the max grade from the group average field name. Usually the field name is like "Grade/100"
+      const parts = gradeFieldName?.split("/") || [];
+      const maxGrade = parseInt(parts.length == 2 ? parts[1] : "0");
+      const passingScore = maxGrade * 0.7;
+
+      // sort the results by the grade field name in descending order. Then filter the top scorers
+      results.sort((a, b) => {
+        const aGrade = parseFloat(a[gradeFieldName || ""] || "0");
+        const bGrade = parseFloat(b[gradeFieldName || ""] || "0");
+        return bGrade - aGrade;
+      });
+      const highestScore = parseInt(results[0][gradeFieldName || ""] || "0");
+      const topScorers = results
+        .filter((result) => {
+          const grade = parseInt(result[gradeFieldName || ""] || "0");
+          return grade >= highestScore;
+        })
+        .map((result) => result["First name"] + " " + result["Last name"])
+        .sort();
+
+      // count the number of passed
+      const passedCount = results.filter((result) => {
+        const grade = parseInt(result[gradeFieldName || ""] || "0");
+        return grade >= passingScore;
+      }).length;
+      const failedCount = results.length - passedCount;
+
+      // filter the result who have empty grades
+      const noAttempts = results.filter((result) => {
+        let grade: any = result[gradeFieldName || ""];
+        grade = parseInt(grade);
+
+        // return true if NaN
+        return Number.isNaN(grade);
+      }).length;
+
+      // send the resulting JavaScript object back as JSON
       response.status(200).json({
-        success: true,
-        count: results.length,
-        data: results,
+        groupAverage: parseFloat(groupAverageValue || "0"),
+        maximumPoints: maxGrade,
+        passingScore: passingScore,
+        totalAttempts: results.length,
+        noAttempts: noAttempts,
+        highestScore: highestScore,
+        topScorers: topScorers,
+        passedCount: passedCount,
+        failedCount: failedCount,
       });
     });
 
     busboy.on("error", (err) => {
       logger.error("Busboy error:", err);
-      response.status(500).send("Internal Server Error");
+      if (!response.headersSent) {
+        response.status(500).send("Internal Server Error");
+      }
     });
 
-    // Pipe the request into busboy
+    // pipe the request into busboy
     if (request.rawBody) {
       busboy.end(request.rawBody);
-    } else {
-      request.pipe(busboy);
+      return;
     }
+
+    request.pipe(busboy);
   },
 );
