@@ -45,7 +45,7 @@ Development and deployment should be managed from the `functions/` directory.
 
 ## Development Conventions
 - **Code Style:** Strictly follows the [Google JavaScript Style Guide](https://google.github.io/styleguide/jsguide.html) via ESLint.
-- **Concurrency:** Uses Firebase Functions v2 for better concurrency and performance management.
+- **Concurrency, CORS & Access:** Uses Firebase Functions v2 with `maxInstances: 2` (Global), `cors: true`, and `invoker: "public"` (on the HTTPS function) for consistent performance, cross-origin access, and public availability.
 - **Type Safety:** Prioritize TypeScript interfaces and types over `any`.
 - **Pre-deployment:** Firebase is configured to automatically run linting and building before every deployment.
 
