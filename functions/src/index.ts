@@ -134,11 +134,11 @@ export const extractDataFromMoodleQuizResults = onRequest(
 
       // filter the result who have empty grades
       const noAttempts = results.filter((result) => {
-        let grade: any = result[gradeFieldName || ""];
-        grade = parseInt(grade);
+        const grade = result[gradeFieldName || ""];
+        const gradeNumber = parseInt(grade);
 
         // return true if NaN
-        return Number.isNaN(grade);
+        return Number.isNaN(gradeNumber);
       }).length;
 
       // send the resulting JavaScript object back as JSON
