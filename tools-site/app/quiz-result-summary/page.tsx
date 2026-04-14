@@ -3,6 +3,7 @@
 import axios from "axios";
 import type { ChangeEvent, DragEvent, FormEvent } from "react";
 import { useCallback, useRef, useState } from "react";
+import QuizSummary, { type QuizResultStats } from "@/components/QuizSummary";
 
 const CSV_ACCEPT = ".csv,text/csv";
 
@@ -19,7 +20,7 @@ export default function QuizResultSummary() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadOk, setUploadOk] = useState<string | null>(null);
+  const [uploadOk, setUploadOk] = useState<QuizResultStats | null>(null);
   const depth = useRef(0);
 
   const pickFile = useCallback((file: File | undefined) => {
@@ -41,15 +42,12 @@ export default function QuizResultSummary() {
       const body = new FormData();
       body.append("file", selectedFile);
 
-      const { data } = await axios.post<{
-        ok?: boolean;
-        error?: string;
-        name?: string;
-      }>("/api/quiz-result-summary/upload", body);
+      const { data } = await axios.post<QuizResultStats>(
+        "/api/quiz-result-summary/upload",
+        body,
+      );
 
-      console.log(data);
-
-      setUploadOk(data.name ? `Uploaded: ${data.name}` : "Upload complete.");
+      setUploadOk(data);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.data) {
         const payload = err.response.data as { error?: string };
@@ -142,11 +140,7 @@ export default function QuizResultSummary() {
             {uploadError}
           </p>
         ) : null}
-        {uploadOk ? (
-          <p className="w-full text-left text-sm text-emerald-700">
-            {uploadOk}
-          </p>
-        ) : null}
+        {uploadOk ? <QuizSummary summary={uploadOk} /> : null}
         <button
           type="submit"
           disabled={!selectedFile || isUploading}
