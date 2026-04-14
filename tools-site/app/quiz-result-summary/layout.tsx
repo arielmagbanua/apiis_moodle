@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
+import Logo from "@/components/Logo";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -15,15 +14,7 @@ export default function QuizResultSummaryLayout({
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-white font-sans">
       <main className="flex flex-1 w-full max-w-4xl flex-col items-center justify-items-start py-32 px-16 bg-white sm:items-start">
-        <Link href="/">
-          <Image
-            src="/apiis_logo.png"
-            alt="APIIS logo"
-            width={280}
-            height={70}
-            priority
-          />
-        </Link>
+        <Logo />
         <div className="flex flex-col w-full items-center gap-6 text-center sm:text-left">
           {children}
         </div>

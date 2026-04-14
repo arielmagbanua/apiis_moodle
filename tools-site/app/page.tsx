@@ -1,19 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 export default function Home() {
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-white font-sans">
       <main className="flex flex-1 w-full max-w-4xl flex-col items-center justify-items-start py-32 px-16 bg-white sm:items-start">
-        <Link href="/">
-          <Image
-            src="/apiis_logo.png"
-            alt="APIIS logo"
-            width={280}
-            height={70}
-            priority
-          />
-        </Link>
+        <Logo />
         <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left w-full">
           <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black">
             APIIS Administrator Tools
