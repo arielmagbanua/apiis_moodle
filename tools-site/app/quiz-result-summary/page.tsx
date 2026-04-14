@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import type { ChangeEvent, DragEvent, FormEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 
@@ -16,6 +17,9 @@ function isCsv(file: File) {
 export default function QuizResultSummary() {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadOk, setUploadOk] = useState<string | null>(null);
   const depth = useRef(0);
 
   const pickFile = useCallback((file: File | undefined) => {
@@ -23,14 +27,41 @@ export default function QuizResultSummary() {
     setSelectedFile(file);
   }, []);
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
       return;
     }
 
-    // Upload / processing will be wired here (e.g. FormData to a route handler).
-    console.log(selectedFile);
+    setUploadError(null);
+    setUploadOk(null);
+    setIsUploading(true);
+
+    try {
+      const body = new FormData();
+      body.append("file", selectedFile);
+
+      const { data } = await axios.post<{
+        ok?: boolean;
+        error?: string;
+        name?: string;
+      }>("/api/quiz-result-summary/upload", body);
+
+      console.log(data);
+
+      setUploadOk(data.name ? `Uploaded: ${data.name}` : "Upload complete.");
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data) {
+        const payload = err.response.data as { error?: string };
+        setUploadError(
+          payload.error ?? `Upload failed (${err.response.status})`,
+        );
+      } else {
+        setUploadError("Network error — try again.");
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const onInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -105,13 +136,23 @@ export default function QuizResultSummary() {
           </span>
         ) : null}
       </label>
-      <div className="flex flex-col items-end justify-center-safe gap-2 w-full">
+      <div className="flex w-full flex-col items-end justify-center-safe gap-2">
+        {uploadError ? (
+          <p className="w-full text-left text-sm text-red-600" role="alert">
+            {uploadError}
+          </p>
+        ) : null}
+        {uploadOk ? (
+          <p className="w-full text-left text-sm text-emerald-700">
+            {uploadOk}
+          </p>
+        ) : null}
         <button
           type="submit"
-          disabled={!selectedFile}
+          disabled={!selectedFile || isUploading}
           className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Submit
+          {isUploading ? "Uploading…" : "Submit"}
         </button>
       </div>
     </form>
