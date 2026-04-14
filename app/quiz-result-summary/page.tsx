@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import type { ChangeEvent, DragEvent, FormEvent } from "react";
+import type { ChangeEvent, DragEvent, SubmitEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import QuizSummary, { type QuizResultStats } from "@/components/QuizSummary";
 
@@ -28,7 +28,7 @@ export default function QuizResultSummary() {
     setSelectedFile(file);
   }, []);
 
-  const onSubmit = async (e: FormEvent) => {
+  const onSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedFile) {
       return;
@@ -144,7 +144,7 @@ export default function QuizResultSummary() {
         <button
           type="submit"
           disabled={!selectedFile || isUploading}
-          className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 hover:cursor-pointer"
         >
           {isUploading ? "Uploading…" : "Submit"}
         </button>
